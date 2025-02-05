@@ -62,6 +62,7 @@
             padding: 20px;
             border-radius: 10px;
             z-index: 100;
+            min-width: 200px;
         }
         #instructions {
             position: absolute;
@@ -73,6 +74,32 @@
             font-size: 16px;
             z-index: 100;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #leaderboard {
+            margin-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.3);
+            padding-top: 10px;
+        }
+        #leaderboard h3 {
+            margin: 0 0 10px 0;
+            color: #ffd700;
+        }
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-size: 14px;
+            color: #fff;
+        }
+        .leaderboard-entry .rank {
+            color: #ffd700;
+            margin-right: 10px;
+        }
+        .new-highscore {
+            color: #ffd700;
+            font-weight: bold;
+            margin: 10px 0;
+            display: none;
         }
         @media (max-width: 768px) {
             #game-container {
@@ -91,7 +118,12 @@
         <img id="bird" src="agenda47.png" alt="Agenda 47 Bird">
         <div id="game-over">
             <h2>Game Over!</h2>
+            <p class="new-highscore">New High Score! 🏆</p>
             <p>Tap or Press Space to restart</p>
+            <div id="leaderboard">
+                <h3>Top Scores</h3>
+                <div id="leaderboard-entries"></div>
+            </div>
         </div>
         <div id="instructions">Tap screen or press Space to jump</div>
     </div>
@@ -209,10 +241,54 @@
             requestAnimationFrame(updateGame);
         }
 
+        // Add these new functions for leaderboard management
+        function getLeaderboard() {
+            const leaderboard = localStorage.getItem('flappyLeaderboard');
+            return leaderboard ? JSON.parse(leaderboard) : [];
+        }
+
+        function saveLeaderboard(scores) {
+            localStorage.setItem('flappyLeaderboard', JSON.stringify(scores));
+        }
+
+        function updateLeaderboard(newScore) {
+            let leaderboard = getLeaderboard();
+            const isNewHighScore = leaderboard.length === 0 || newScore > Math.min(...leaderboard);
+            
+            // Add new score and sort in descending order
+            leaderboard.push(newScore);
+            leaderboard.sort((a, b) => b - a);
+            
+            // Keep only top 5 scores
+            leaderboard = leaderboard.slice(0, 5);
+            
+            // Save updated leaderboard
+            saveLeaderboard(leaderboard);
+            
+            // Update display
+            const leaderboardDiv = document.getElementById('leaderboard-entries');
+            leaderboardDiv.innerHTML = '';
+            
+            leaderboard.forEach((score, index) => {
+                const entry = document.createElement('div');
+                entry.className = 'leaderboard-entry';
+                entry.innerHTML = `
+                    <span><span class="rank">#${index + 1}</span></span>
+                    <span>${score}</span>
+                `;
+                leaderboardDiv.appendChild(entry);
+            });
+
+            // Show new highscore message if applicable
+            const newHighScoreMessage = document.querySelector('.new-highscore');
+            newHighScoreMessage.style.display = isNewHighScore ? 'block' : 'none';
+        }
+
         function gameOver() {
             isGameActive = false;
             gameOverScreen.style.display = 'block';
             instructions.style.display = 'none';
+            updateLeaderboard(score);
         }
 
         function resetGame() {
