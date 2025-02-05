@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Flappy Agenda 47</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
             margin: 0;
@@ -11,12 +12,19 @@
             min-height: 100vh;
             background: #000;
             font-family: Arial, sans-serif;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         #game-container {
             position: relative;
-            width: 400px;
-            height: 600px;
+            width: 100vw;
+            max-width: 400px;
+            height: 100vh;
+            max-height: 600px;
             overflow: hidden;
+            background: linear-gradient(to bottom, #4a90e2, #87ceeb);
         }
         #bird {
             position: absolute;
@@ -24,11 +32,13 @@
             height: 40px;
             left: 50px;
             transition: transform 0.1s;
+            z-index: 2;
         }
         .pipe {
             position: absolute;
             width: 50px;
-            background: #008000;
+            background: #2ecc71;
+            z-index: 1;
         }
         #score {
             position: absolute;
@@ -38,6 +48,7 @@
             color: white;
             font-size: 24px;
             z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
         #game-over {
             display: none;
@@ -47,6 +58,30 @@
             transform: translate(-50%, -50%);
             color: white;
             text-align: center;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            font-size: 16px;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        @media (max-width: 768px) {
+            #game-container {
+                width: 100vw;
+                height: 100vh;
+            }
+            #instructions {
+                font-size: 14px;
+            }
         }
     </style>
 </head>
@@ -56,8 +91,9 @@
         <img id="bird" src="agenda47.png" alt="Agenda 47 Bird">
         <div id="game-over">
             <h2>Game Over!</h2>
-            <p>Press Space to restart</p>
+            <p>Tap or Press Space to restart</p>
         </div>
+        <div id="instructions">Tap screen or press Space to jump</div>
     </div>
 
     <script>
@@ -65,6 +101,7 @@
         const gameContainer = document.getElementById('game-container');
         const scoreElement = document.getElementById('score');
         const gameOverScreen = document.getElementById('game-over');
+        const instructions = document.getElementById('instructions');
 
         let birdY = 300;
         let velocity = 0;
@@ -72,6 +109,15 @@
         let isGameActive = true;
         let score = 0;
         let pipes = [];
+        
+        // Adjust game container size based on viewport
+        function adjustGameContainer() {
+            const vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+        }
+
+        window.addEventListener('resize', adjustGameContainer);
+        adjustGameContainer();
 
         function jump() {
             if (!isGameActive) return;
@@ -80,9 +126,9 @@
         }
 
         function createPipe() {
-            const gap = 200;
-            const minHeight = 100;
-            const maxHeight = 400;
+            const gap = gameContainer.offsetHeight * 0.25; // Responsive gap
+            const minHeight = gameContainer.offsetHeight * 0.1;
+            const maxHeight = gameContainer.offsetHeight * 0.6;
             const height = Math.random() * (maxHeight - minHeight) + minHeight;
 
             const topPipe = document.createElement('div');
@@ -127,11 +173,12 @@
             // Update pipes
             pipes.forEach(pipe => {
                 const currentRight = parseFloat(pipe.topPipe.style.right) || 0;
-                pipe.topPipe.style.right = `${currentRight + 3}px`;
-                pipe.bottomPipe.style.right = `${currentRight + 3}px`;
+                const moveSpeed = gameContainer.offsetWidth * 0.005; // Responsive speed
+                pipe.topPipe.style.right = `${currentRight + moveSpeed}px`;
+                pipe.bottomPipe.style.right = `${currentRight + moveSpeed}px`;
 
                 // Score counting
-                if (!pipe.passed && currentRight > 100) {
+                if (!pipe.passed && currentRight > gameContainer.offsetWidth * 0.2) {
                     pipe.passed = true;
                     score++;
                     scoreElement.textContent = `Score: ${score}`;
@@ -155,7 +202,7 @@
             });
 
             // Ground collision
-            if (birdY + 40 > gameContainer.offsetHeight - 50 || birdY < 0) {
+            if (birdY + 40 > gameContainer.offsetHeight || birdY < 0) {
                 gameOver();
             }
 
@@ -165,6 +212,7 @@
         function gameOver() {
             isGameActive = false;
             gameOverScreen.style.display = 'block';
+            instructions.style.display = 'none';
         }
 
         function resetGame() {
@@ -176,19 +224,21 @@
             pipes = [];
             
             // Reset values
-            birdY = 300;
+            birdY = gameContainer.offsetHeight * 0.5;
             velocity = 0;
             score = 0;
             isGameActive = true;
             scoreElement.textContent = 'Score: 0';
             gameOverScreen.style.display = 'none';
+            instructions.style.display = 'block';
             
             updateGame();
         }
 
-        // Event listeners
+        // Event listeners for both touch and keyboard
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space') {
+                e.preventDefault();
                 if (isGameActive) {
                     jump();
                 } else {
@@ -197,12 +247,30 @@
             }
         });
 
+        // Touch events
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (isGameActive) {
+                jump();
+            } else {
+                resetGame();
+            }
+        }, { passive: false });
+
+        // Prevent default touch behavior
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+
         // Start game loop
         setInterval(() => {
             if (isGameActive) {
                 pipes.push(createPipe());
             }
-        }, 1200);
+        }, 1500);
+        
+        // Initial setup
+        birdY = gameContainer.offsetHeight * 0.5;
         updateGame();
     </script>
 </body>
